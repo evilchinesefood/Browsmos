@@ -10,7 +10,7 @@
 // Bump CACHE whenever the SHELL list or a vendored asset changes (so the
 // activate step purges the old cache). Tests/Structure.mjs enforces that every
 // first-party Source/*.js stays listed in SHELL_FIRST_PARTY.
-const CACHE = "browsmos-v2";
+const CACHE = "browsmos-v3";
 
 const SHELL_FIRST_PARTY = [
   "./",
@@ -30,6 +30,7 @@ const SHELL_FIRST_PARTY = [
   "./Source/Assets/Icon192.png",
   "./Source/Assets/Icon512.png",
   "./Source/Assets/Logo.png",
+  "./Source/Assets/Fonts/VT323.woff2",
   "./Source/Assets/Audio/Fx/Blip.ogg",
   "./Source/Assets/Audio/Fx/Bounce.ogg",
   "./Source/Assets/Audio/Fx/Death.ogg",

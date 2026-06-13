@@ -116,9 +116,15 @@ window.addEventListener("blur", () => {
 });
 
 // --- Loop ----------------------------------------------------------------
+// Lock to a steady ~60 fps. The gate (1000/65) is just under a 60 Hz frame so
+// 60 Hz displays never skip, while high-refresh displays are capped to ~60.
+const MIN_FRAME_MS = 1000 / 65;
+let lastFrameTime = 0;
 function frame(now) {
-  world.update(now);
   requestAnimationFrame(frame);
+  if (now - lastFrameTime < MIN_FRAME_MS) return;
+  lastFrameTime = now;
+  world.update(now);
 }
 requestAnimationFrame(frame);
 

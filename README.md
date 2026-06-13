@@ -50,20 +50,8 @@ npx serve .       # then open the printed URL
 
 `Tests/Structure.mjs` enforces that every `Source/*.js` is listed in the service worker shell, so add new modules to both.
 
-## Deploy
-
-Static rsync to the `dev.jdayers.com/osmosis` web root. **Bump `CACHE` in `ServiceWorker.js`** whenever shipped code or vendored assets change, so returning users' caches refresh.
-
-```bash
-rsync -az --delete -e ssh ./ <user>@<host>:/home/<user>/dev.jdayers.com/osmosis/
-```
-
 ## Credits
 
 - Game design and original code by [Stephen Eisenhauer](https://stepheneisenhauer.com).
 - Inspired by [Osmos](https://www.hemispheregames.com/osmos/) by Hemisphere Games — buy it, it's wonderful.
 - Music from the [ccMixter](https://ccmixter.org) community: "Black Rainbow" by Pitx and "Circles" by rewob.
-
-## License
-
-JavaScript sources are licensed under the Simplified BSD License. You're free to modify and redistribute, but please don't pass off modifications as the original author's, and keep an attribution link back to the project.

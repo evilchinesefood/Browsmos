@@ -57,9 +57,11 @@ export class Cell extends Mover {
     if (!this.dead) super.update(frame_delta);
   }
 
-  // Trace the organic (wobbling) membrane outline into the current path.
-  _membrane(ctx, cx, cy, r, time) {
+  // Trace the organic (wobbling) membrane into the current path, around a local
+  // origin (the context is pre-translated to the cell center).
+  _trace(ctx, ox, oy, r, time) {
     const N = 18;
+    ctx.beginPath();
     for (let i = 0; i <= N; i++) {
       const a = (i / N) * TAU;
       const w =
@@ -67,8 +69,8 @@ export class Cell extends Mover {
         0.05 * Math.sin(a * 3 + this.seed + time * 1.6) +
         0.03 * Math.sin(a * 5 - this.seed * 1.7 + time * 1.1);
       const rr = r * w;
-      const x = cx + Math.cos(a) * rr;
-      const y = cy + Math.sin(a) * rr;
+      const x = ox + Math.cos(a) * rr;
+      const y = oy + Math.sin(a) * rr;
       i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
     }
     ctx.closePath();
@@ -83,6 +85,10 @@ export class Cell extends Mover {
     const r = this.radius * cam.scale;
     if (r <= 0.5) return;
 
+    // Viewport culling — skip anything fully off-screen.
+    const m = r + 30;
+    if (vx < -m || vx > cam.viewW + m || vy < -m || vy > cam.viewH + m) return;
+
     const isPlayer = player_radius === undefined;
     let color = PLAYER;
     if (!isPlayer) {
@@ -91,75 +97,77 @@ export class Cell extends Mover {
       else color = EDIBLE;
     }
 
-    // Soft cast shadow on the slide.
+    ctx.save();
+    ctx.translate(vx, vy);
+
+    // Soft cast shadow (its own offset path).
     if (shadow) {
+      this._trace(ctx, 1.5, 3, r, time);
       ctx.fillStyle = "rgba(0,18,38,0.22)";
-      this._membrane(ctx, vx + 1.5, vy + 3, r, time);
       ctx.fill();
     }
 
-    // Glow halo — player only (one expensive blur pass per frame).
+    // Body path — reused for the glow, the fill, and the membrane stroke.
+    this._trace(ctx, 0, 0, r, time);
+
     if (isPlayer) {
       ctx.save();
       ctx.shadowColor = color;
       ctx.shadowBlur = 22;
       ctx.fillStyle = rgba(RGB[color], 0.9);
-      this._membrane(ctx, vx, vy, r, time);
       ctx.fill();
       ctx.restore();
     }
 
-    // Translucent cytoplasm — lit core fading to a soft membrane edge.
     const body = ctx.createRadialGradient(
-      vx - r * 0.35,
-      vy - r * 0.35,
+      -r * 0.35,
+      -r * 0.35,
       r * 0.1,
-      vx,
-      vy,
+      0,
+      0,
       r,
     );
     body.addColorStop(0, rgba(CORE[color], isPlayer ? 0.95 : 0.88));
     body.addColorStop(0.65, rgba(RGB[color], isPlayer ? 0.85 : 0.74));
     body.addColorStop(1, rgba(RGB[color], isPlayer ? 0.7 : 0.52));
     ctx.fillStyle = body;
-    this._membrane(ctx, vx, vy, r, time);
     ctx.fill();
 
-    // Membrane rim.
     ctx.lineWidth = Math.max(1, r * 0.05);
     ctx.strokeStyle = rgba(MEMBRANE[color], isPlayer ? 0.8 : 0.55);
-    this._membrane(ctx, vx, vy, r, time);
     ctx.stroke();
 
-    if (r < 5) return; // too small to bother with internals
-
-    // Nucleus — a denser blob that drifts slowly inside the cell.
-    const na = this.seed + time * 0.4;
-    const noff = r * 0.16;
-    const ncx = vx + Math.cos(na) * noff;
-    const ncy = vy + Math.sin(na) * noff;
-    const nr = r * 0.34;
-    const nuc = ctx.createRadialGradient(
-      ncx - nr * 0.3,
-      ncy - nr * 0.3,
-      nr * 0.1,
-      ncx,
-      ncy,
-      nr,
-    );
-    nuc.addColorStop(0, rgba(RGB[color], 0.5));
-    nuc.addColorStop(1, rgba(NUCLEUS[color], 0.55));
-    ctx.fillStyle = nuc;
-    ctx.beginPath();
-    ctx.arc(ncx, ncy, nr, 0, TAU);
-    ctx.fill();
-
-    // A vacuole highlight on larger cells.
-    if (r > 16) {
-      ctx.fillStyle = rgba(CORE[color], 0.5);
+    if (r >= 5) {
+      // Nucleus — a denser blob that drifts slowly inside the cell.
+      const na = this.seed + time * 0.4;
+      const noff = r * 0.16;
+      const ncx = Math.cos(na) * noff;
+      const ncy = Math.sin(na) * noff;
+      const nr = r * 0.34;
+      const nuc = ctx.createRadialGradient(
+        ncx - nr * 0.3,
+        ncy - nr * 0.3,
+        nr * 0.1,
+        ncx,
+        ncy,
+        nr,
+      );
+      nuc.addColorStop(0, rgba(RGB[color], 0.5));
+      nuc.addColorStop(1, rgba(NUCLEUS[color], 0.55));
+      ctx.fillStyle = nuc;
       ctx.beginPath();
-      ctx.arc(vx + r * 0.32, vy - r * 0.28, r * 0.12, 0, TAU);
+      ctx.arc(ncx, ncy, nr, 0, TAU);
       ctx.fill();
+
+      // A vacuole highlight on larger cells.
+      if (r > 16) {
+        ctx.fillStyle = rgba(CORE[color], 0.5);
+        ctx.beginPath();
+        ctx.arc(r * 0.32, -r * 0.28, r * 0.12, 0, TAU);
+        ctx.fill();
+      }
     }
+
+    ctx.restore();
   }
 }

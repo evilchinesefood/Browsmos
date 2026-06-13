@@ -35,26 +35,132 @@ export class World {
     this._lastTick = 0;
     this.frame_delta = 1;
 
-    // Suspended particulate matter drifting in the water (persists across levels).
-    this.motes = this._initMotes();
+    // Suspended matter drifting in the water — layered for depth, persists
+    // across levels.
+    this.particles = this._initParticles();
   }
 
-  _initMotes() {
-    const m = [];
+  _initParticles() {
+    const P = [];
     const R = this.level_radius;
-    for (let i = 0; i < 64; i++) {
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const place = () => {
       const ang = Math.random() * TAU;
-      const rad = Math.sqrt(Math.random()) * R * 0.95;
-      m.push({
-        x: Math.cos(ang) * rad,
-        y: Math.sin(ang) * rad,
-        vx: (Math.random() - 0.5) * 0.08,
-        vy: (Math.random() - 0.5) * 0.08,
-        r: 0.6 + Math.random() * 1.8,
-        a: 0.05 + Math.random() * 0.18,
-      });
+      const rad = Math.sqrt(Math.random()) * R * 0.97;
+      return [Math.cos(ang) * rad, Math.sin(ang) * rad];
+    };
+    const add = (type, count, rMin, rMax, aMin, aMax, sp) => {
+      for (let i = 0; i < count; i++) {
+        const [x, y] = place();
+        P.push({
+          x,
+          y,
+          vx: rnd(-sp, sp),
+          vy: rnd(-sp, sp),
+          r: rnd(rMin, rMax),
+          a: rnd(aMin, aMax),
+          type,
+          rot: Math.random() * TAU,
+          vrot: rnd(-0.012, 0.012),
+        });
+      }
+    };
+    // Out-of-focus background blobs (deep, slow, faint).
+    add("blob", 10, 16, 46, 0.03, 0.07, 0.03);
+    // Mid-water debris.
+    add("speck", 36, 1.0, 3.2, 0.08, 0.24, 0.06);
+    add("rod", 22, 1.4, 4.0, 0.08, 0.22, 0.05);
+    add("ring", 14, 2.0, 5.0, 0.07, 0.18, 0.05);
+    add("fleck", 18, 1.6, 4.2, 0.08, 0.22, 0.05);
+    // Sharp foreground motes (in focus).
+    add("mote", 46, 0.6, 2.0, 0.12, 0.32, 0.09);
+    return P;
+  }
+
+  _updateParticles(time) {
+    if (this.paused) return;
+    const fd = this.frame_delta;
+    const R = this.level_radius;
+    for (const p of this.particles) {
+      // Gentle curl-ish flow so motion meanders instead of drifting straight.
+      const fx = Math.sin(p.y * 0.01 + time * 0.3) * 0.02;
+      const fy = Math.cos(p.x * 0.011 - time * 0.25) * 0.02;
+      p.x += (p.vx + fx) * fd;
+      p.y += (p.vy + fy) * fd;
+      p.rot += p.vrot * fd;
+      if (Math.hypot(p.x, p.y) > R * 0.97) {
+        p.vx = -p.vx;
+        p.vy = -p.vy;
+        p.x *= 0.96;
+        p.y *= 0.96;
+      }
     }
-    return m;
+  }
+
+  _drawParticles(ctx, cam) {
+    const W = cam.viewW,
+      H = cam.viewH,
+      m = 50;
+    for (const p of this.particles) {
+      const vx = cam.world_to_viewport_x(p.x);
+      const vy = cam.world_to_viewport_y(p.y);
+      if (vx < -m || vx > W + m || vy < -m || vy > H + m) continue;
+      const r = p.r * cam.scale;
+      if (r < 0.3) continue;
+
+      switch (p.type) {
+        case "blob": {
+          const g = ctx.createRadialGradient(vx, vy, 0, vx, vy, r);
+          g.addColorStop(0, `rgba(150,195,255,${p.a})`);
+          g.addColorStop(1, "rgba(150,195,255,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(vx, vy, r, 0, TAU);
+          ctx.fill();
+          break;
+        }
+        case "ring": {
+          ctx.strokeStyle = `rgba(190,220,255,${p.a})`;
+          ctx.lineWidth = Math.max(0.5, r * 0.28);
+          ctx.beginPath();
+          ctx.arc(vx, vy, r, 0, TAU);
+          ctx.stroke();
+          break;
+        }
+        case "rod": {
+          ctx.save();
+          ctx.translate(vx, vy);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = `rgba(200,222,250,${p.a})`;
+          const L = r * 3;
+          const w = Math.max(0.8, r * 0.6);
+          ctx.fillRect(-L / 2, -w / 2, L, w);
+          ctx.restore();
+          break;
+        }
+        case "fleck": {
+          ctx.save();
+          ctx.translate(vx, vy);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = `rgba(195,218,248,${p.a})`;
+          ctx.beginPath();
+          ctx.moveTo(-r, r * 0.4);
+          ctx.lineTo(r, 0);
+          ctx.lineTo(-r * 0.6, -r);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+          break;
+        }
+        default: {
+          // speck / mote
+          ctx.fillStyle = `rgba(205,228,255,${p.a})`;
+          ctx.beginPath();
+          ctx.arc(vx, vy, Math.max(0.5, r), 0, TAU);
+          ctx.fill();
+        }
+      }
+    }
   }
 
   // First dismissal of the help screen. The board is already live (load_level
@@ -247,7 +353,7 @@ export class World {
   }
 
   // Render the microscope field: dark eyepiece surround, illuminated pond with
-  // a bloom, drifting light caustics, and suspended motes.
+  // a bloom, light caustics + condenser glow, and suspended particles.
   _drawWater(ctx, cam, cssW, cssH, time) {
     const sx = cssW / 2,
       sy = cssH / 2;
@@ -267,7 +373,7 @@ export class World {
     const px = cam.world_to_viewport_x(0);
     const py = cam.world_to_viewport_y(0);
     const pr = Math.abs(this.level_radius * cam.scale);
-    if (pr <= 0) return { px, py, pr };
+    if (pr <= 0) return;
 
     // Outer bloom around the lit specimen.
     const bloom = ctx.createRadialGradient(px, py, pr * 0.9, px, py, pr * 1.2);
@@ -295,43 +401,38 @@ export class World {
     ctx.arc(px, py, pr, 0, TAU);
     ctx.fill();
 
-    // Light caustics + motes, clipped to the water.
+    // Caustics, condenser glow, particles — all clipped to the water.
     ctx.save();
     ctx.beginPath();
     ctx.arc(px, py, pr, 0, TAU);
     ctx.clip();
 
     ctx.globalCompositeOperation = "screen";
-    for (let i = 0; i < 4; i++) {
-      const ax = px + Math.cos(time * 0.25 + i * 2.1) * pr * 0.5;
-      const ay = py + Math.sin(time * 0.21 + i * 1.3) * pr * 0.5;
-      const ar = pr * (0.5 + 0.15 * Math.sin(time * 0.5 + i));
+    // Soft condenser light breathing under the specimen.
+    const lr = pr * (0.55 + 0.05 * Math.sin(time * 0.4));
+    const cond = ctx.createRadialGradient(px, py, 0, px, py, lr);
+    cond.addColorStop(0, "rgba(120,180,255,0.12)");
+    cond.addColorStop(1, "rgba(120,180,255,0)");
+    ctx.fillStyle = cond;
+    ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+    // Drifting caustics (two scales).
+    for (let i = 0; i < 6; i++) {
+      const sc = i < 3 ? 0.5 : 0.28;
+      const sp = i < 3 ? 1 : 1.7;
+      const ax = px + Math.cos(time * 0.25 * sp + i * 2.1) * pr * 0.5;
+      const ay = py + Math.sin(time * 0.21 * sp + i * 1.3) * pr * 0.5;
+      const ar = pr * (sc + 0.12 * Math.sin(time * 0.5 + i));
       const cg = ctx.createRadialGradient(ax, ay, 0, ax, ay, ar);
-      cg.addColorStop(0, "rgba(150,205,255,0.10)");
+      cg.addColorStop(0, "rgba(150,205,255,0.09)");
       cg.addColorStop(1, "rgba(150,205,255,0)");
       ctx.fillStyle = cg;
       ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
     }
     ctx.globalCompositeOperation = "source-over";
 
-    for (const m of this.motes) {
-      if (!this.paused) {
-        m.x += m.vx * this.frame_delta;
-        m.y += m.vy * this.frame_delta;
-        if (Math.hypot(m.x, m.y) > this.level_radius * 0.96) {
-          m.vx = -m.vx;
-          m.vy = -m.vy;
-          m.x *= 0.95;
-          m.y *= 0.95;
-        }
-      }
-      const mx = cam.world_to_viewport_x(m.x);
-      const my = cam.world_to_viewport_y(m.y);
-      ctx.fillStyle = `rgba(205,228,255,${m.a})`;
-      ctx.beginPath();
-      ctx.arc(mx, my, Math.max(0.5, m.r * cam.scale), 0, TAU);
-      ctx.fill();
-    }
+    this._updateParticles(time);
+    this._drawParticles(ctx, cam);
+
     ctx.restore();
 
     // Inner edge shadow (water meniscus).
@@ -349,8 +450,6 @@ export class World {
     ctx.beginPath();
     ctx.arc(px, py, pr, 0, TAU);
     ctx.stroke();
-
-    return { px, py, pr };
   }
 
   // One frame: integrate physics, resolve collisions, render, track the camera.

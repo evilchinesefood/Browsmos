@@ -1,3 +1,10 @@
+/* Vendored retro font for the "made with love" credit (offline-safe). */
+@font-face {
+  font-family: "VT323";
+  src: url("../Assets/Fonts/VT323.woff2") format("woff2");
+  font-display: swap;
+}
+
 /* Full-bleed play surface. touch-action: none lets pointer/wheel drive the
    game without the browser hijacking gestures for scroll/zoom. */
 #canvas {
@@ -92,25 +99,6 @@
   content: "\266b\00a0";
 }
 
-footer {
-  position: fixed;
-  right: max(8px, env(safe-area-inset-right));
-  bottom: max(8px, env(safe-area-inset-bottom));
-  z-index: 2;
-}
-footer a {
-  color: var(--game-ink);
-  text-decoration: none;
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  opacity: 0.4;
-  transition: opacity 0.15s linear;
-}
-footer a:hover {
-  opacity: 0.7;
-}
-
 /* Intro / help overlay — a dim field with a centered "lab slide" panel. */
 #help-overlay {
   position: fixed;
@@ -202,13 +190,84 @@ footer a:hover {
   font-weight: 700;
 }
 
+/* Help-panel links: GitHub + the retro "made with love" bezel credit. */
+.help-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1.1rem;
+}
+.help-link {
+  color: var(--game-cyan);
+  font-size: 0.75rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  opacity: 0.85;
+}
+.help-link:hover {
+  opacity: 1;
+}
+.credit {
+  display: inline-block;
+  padding: 9px 18px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #0e3d1a 0%, #062a10 50%, #021608 100%);
+  border: 1px solid #2d8c4a;
+  box-shadow:
+    inset 0 1px 0 rgba(140, 255, 170, 0.6),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+    0 4px 14px rgba(0, 0, 0, 0.5),
+    0 0 18px rgba(92, 255, 138, 0.2);
+  font-family: "VT323", ui-monospace, monospace;
+  font-size: 19px;
+  line-height: 1;
+  color: #5cff8a;
+  text-shadow:
+    0 0 6px #5cff8a,
+    0 0 14px rgba(92, 255, 138, 0.55);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.credit:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(140, 255, 170, 0.7),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+    0 6px 18px rgba(0, 0, 0, 0.55),
+    0 0 24px rgba(92, 255, 138, 0.35);
+}
+.credit:active {
+  transform: translateY(1px);
+}
+.credit .heart {
+  color: #ff5a7a;
+  text-shadow: 0 0 8px rgba(255, 90, 122, 0.7);
+}
+.credit .cursor {
+  animation: credit-blink 1s steps(2) infinite;
+}
+@keyframes credit-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
 /* Honor reduced-motion: drop UI transitions. (Camera easing + cell wobble are
    intrinsic to the ambient gameplay and left as-is.) */
 @media (prefers-reduced-motion: reduce) {
   #controls wa-button,
   #song-info,
-  footer a,
+  .help-link,
+  .credit,
   .play-btn {
     transition: none;
+  }
+  .credit .cursor {
+    animation: none;
   }
 }
