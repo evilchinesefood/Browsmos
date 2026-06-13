@@ -62,36 +62,23 @@ export class Cell extends Mover {
   // Trace the (possibly elongated/spiky) wobbling membrane into the current
   // path, around the pre-translated local origin, oriented along `heading`.
   _trace(ctx, ox, oy, r, time, shape, heading) {
+    const N = shape === "spiky" ? 22 : 18;
     const ch = Math.cos(heading),
       sh = Math.sin(heading);
     ctx.beginPath();
-
-    if (shape === "spiky") {
-      // A star: spike tips and valleys alternate, with the valleys sitting on a
-      // round-ish inner body so every spike is attached to the cell.
-      const S = 10;
-      const N2 = S * 2;
-      const breathe = 1 + 0.04 * Math.sin(time * 1.4 + this.seed);
-      for (let i = 0; i <= N2; i++) {
-        const a = (i / N2) * TAU;
-        const w = (i % 2 === 0 ? 1.32 : 0.86) * breathe;
-        const rx = Math.cos(a) * r * w;
-        const ry = Math.sin(a) * r * w;
-        const x = ox + rx * ch - ry * sh;
-        const y = oy + rx * sh + ry * ch;
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-      }
-      ctx.closePath();
-      return;
-    }
-
-    const N = 18;
     for (let i = 0; i <= N; i++) {
       const a = (i / N) * TAU;
-      const w =
-        1 +
-        0.05 * Math.sin(a * 3 + this.seed + time * 1.6) +
-        0.03 * Math.sin(a * 5 - this.seed * 1.7 + time * 1.1);
+      let w;
+      if (shape === "spiky")
+        w =
+          1 +
+          0.14 * Math.sin(a * 7 + this.seed) +
+          0.04 * Math.sin(a * 3 + time * 1.4 + this.seed);
+      else
+        w =
+          1 +
+          0.05 * Math.sin(a * 3 + this.seed + time * 1.6) +
+          0.03 * Math.sin(a * 5 - this.seed * 1.7 + time * 1.1);
       let rx = Math.cos(a) * r * w;
       let ry = Math.sin(a) * r * w;
       if (shape === "rod") {
@@ -211,6 +198,22 @@ export class Cell extends Mover {
       ctx.fill();
     }
 
+    // Cilia hairs — drawn behind the body so they peek out under the rim.
+    if (sp && sp.cilia && r >= 4) {
+      ctx.strokeStyle = rgba(MEMBRANE[color], 0.5);
+      ctx.lineWidth = Math.max(0.6, r * 0.045);
+      const H = 18;
+      for (let i = 0; i < H; i++) {
+        const a = (i / H) * TAU;
+        const wob = Math.sin(a * 3 + time * 4 + this.seed) * 0.3;
+        const oa = a + wob;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * r * 0.8, Math.sin(a) * r * 0.8);
+        ctx.lineTo(Math.cos(oa) * r * 1.33, Math.sin(oa) * r * 1.33);
+        ctx.stroke();
+      }
+    }
+
     // Body path — reused for fill and membrane stroke.
     this._trace(ctx, 0, 0, r, time, shape, heading);
 
@@ -232,22 +235,6 @@ export class Cell extends Mover {
     ctx.lineWidth = Math.max(1, r * 0.05);
     ctx.strokeStyle = rgba(MEMBRANE[color], isPlayer ? 0.8 : 0.55);
     ctx.stroke();
-
-    // Cilia hairs around the rim.
-    if (sp && sp.cilia && r >= 4) {
-      ctx.strokeStyle = rgba(MEMBRANE[color], 0.45);
-      ctx.lineWidth = Math.max(0.6, r * 0.045);
-      const H = 18;
-      for (let i = 0; i < H; i++) {
-        const a = (i / H) * TAU;
-        const wob = Math.sin(a * 3 + time * 4 + this.seed) * 0.3;
-        const oa = a + wob;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * r * 0.96, Math.sin(a) * r * 0.96);
-        ctx.lineTo(Math.cos(oa) * r * 1.33, Math.sin(oa) * r * 1.33);
-        ctx.stroke();
-      }
-    }
 
     if (r >= 5) {
       if (sp && sp.item && r >= 7) {

@@ -10,7 +10,7 @@
 // Bump CACHE whenever the SHELL list or a vendored asset changes (so the
 // activate step purges the old cache). Tests/Structure.mjs enforces that every
 // first-party Source/*.js stays listed in SHELL_FIRST_PARTY.
-const CACHE = "browsmos-v6";
+const CACHE = "browsmos-v7";
 
 const SHELL_FIRST_PARTY = [
   "./",
@@ -116,7 +116,9 @@ self.addEventListener("activate", (e) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
+        Promise.all(
+          keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)),
+        ),
       )
       .then(() => self.clients.claim()),
   );

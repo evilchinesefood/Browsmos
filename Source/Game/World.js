@@ -5,7 +5,7 @@ const FPS = 30;
 const MSPF = 1000 / FPS;
 const MAX_DELTA = 4; // cap a stall (tab refocus, GC) so physics can't explode
 const TAU = Math.PI * 2;
-const NPC_VELOC_MAX = 2.2; // NPC cells always drift slowly, never zip around
+const NPC_VELOC_MAX = 0.4; // NPC cells creep at a snail's pace, never zip around
 const NPC_MAX_RADIUS = 80; // keep AI cells catchable so the level stays winnable
 
 // Angle of the vector (x, y), normalized to [0, 2π). Used for wall bounces.
@@ -306,7 +306,9 @@ export class World {
     this.ui.clearMessages();
 
     // Player is always cell 0, at the origin (no species — plain blob).
-    this.cells.push(new Cell(0, 0, 10));
+    const player = new Cell(0, 0, 10);
+    player.friction = 0.9988; // glides further — drifts more after a push
+    this.cells.push(player);
 
     // Scatter 30 cells: a few tiny, a couple large, the rest mixed.
     const num_cells = 30;
@@ -322,8 +324,9 @@ export class World {
       const cell = new Cell(x, y, rad);
       cell.species = makeSpecies();
       cell.veloc_max = NPC_VELOC_MAX; // NPCs stay slow
-      cell.x_veloc = (Math.random() - 0.5) * 0.35;
-      cell.y_veloc = (Math.random() - 0.5) * 0.35;
+      cell.friction = 0.9994; // keeps their faint snail drift from decaying away
+      cell.x_veloc = (Math.random() - 0.5) * 0.1;
+      cell.y_veloc = (Math.random() - 0.5) * 0.1;
       this.cells.push(cell);
     }
 
@@ -483,8 +486,8 @@ export class World {
         const dx = bx - h.x_pos,
           dy = by - h.y_pos;
         const d = Math.hypot(dx, dy) || 1;
-        h.x_veloc += (dx / d) * 0.06 * fd;
-        h.y_veloc += (dy / d) * 0.06 * fd;
+        h.x_veloc += (dx / d) * 0.018 * fd;
+        h.y_veloc += (dy / d) * 0.018 * fd;
       }
     }
   }
