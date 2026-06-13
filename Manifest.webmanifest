@@ -1,0 +1,37 @@
+{
+  "name": "Browsmos",
+  "short_name": "Browsmos",
+  "description": "An ambient cell-eating game for the browser, inspired by Osmos.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#1d40b5",
+  "icons": [
+    {
+      "src": "./Source/Assets/Icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "./Source/Assets/Icon192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "./Source/Assets/Icon512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "./Source/Assets/IconMaskable512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ]
+}

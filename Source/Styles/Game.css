@@ -1,0 +1,162 @@
+/* Full-bleed play surface. touch-action: none lets pointer/wheel drive the
+   game without the browser hijacking gestures for scroll/zoom. */
+#canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+#logo {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
+  left: max(8px, env(safe-area-inset-left));
+  z-index: 2;
+  opacity: 0.4;
+  transition: opacity 0.15s linear;
+}
+#logo:hover {
+  opacity: 0.7;
+}
+
+/* Control buttons (top-right). Plain WA buttons tinted to the game ink and
+   dimmed until hovered/focused. */
+#controls {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  z-index: 2;
+  display: flex;
+  gap: 0.25rem;
+}
+#controls wa-button {
+  font-size: 1.15rem;
+  /* The slotted <i> can't inherit `color` — the plain button's inner element
+     hard-sets --wa-color-on-quiet. Override the token so icons take game-ink. */
+  --wa-color-on-quiet: var(--game-ink);
+  opacity: 0.45;
+  transition: opacity 0.15s linear;
+}
+#controls wa-button:hover,
+#controls wa-button:focus-within {
+  opacity: 1;
+}
+
+/* Status messages: centered glass cards, click to act. */
+.message {
+  position: fixed;
+  left: 50%;
+  bottom: 14%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: none;
+  width: min(420px, 90vw);
+  padding: 1.1rem 1.4rem;
+  text-align: center;
+  background: var(--game-glass);
+  border: 1px solid rgba(147, 251, 255, 0.25);
+  border-radius: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  margin-bottom: env(safe-area-inset-bottom);
+}
+.message.visible {
+  display: block;
+}
+.message .title {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+.message .sub {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-top: 0.25rem;
+}
+
+/* Now-playing readout (bottom-left), fades up on track change. */
+#song-info {
+  position: fixed;
+  left: max(8px, env(safe-area-inset-left));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 2;
+  max-width: 60vw;
+  font-size: 0.7rem;
+  padding: 6px 8px;
+  border-radius: 6px;
+  opacity: 0.5;
+  background: transparent;
+  transition:
+    opacity 1s linear,
+    background-color 1s linear;
+}
+#song-info.featured {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.45);
+}
+#song-title {
+  font-weight: 700;
+}
+#song-title:not(:empty)::before {
+  content: "\266b\00a0";
+}
+
+footer {
+  position: fixed;
+  right: max(8px, env(safe-area-inset-right));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 2;
+}
+footer a {
+  color: var(--game-ink);
+  text-decoration: none;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.4;
+  transition: opacity 0.15s linear;
+}
+footer a:hover {
+  opacity: 0.7;
+}
+
+/* Help dialog body */
+.help-body h3 {
+  margin: 1.2em 0 0.3em;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  padding-bottom: 0.2em;
+}
+.help-body p {
+  margin: 0.45em 0;
+  line-height: 1.5;
+}
+.help-body a {
+  color: var(--game-cyan);
+}
+.help-body .key {
+  display: inline-block;
+  min-width: 1.5em;
+  text-align: center;
+  padding: 1px 5px;
+  margin-right: 0.3em;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+/* Honor reduced-motion: drop UI transitions. (Camera easing is intrinsic to
+   the ambient gameplay and left as-is.) */
+@media (prefers-reduced-motion: reduce) {
+  #logo,
+  #controls wa-button,
+  #song-info,
+  footer a {
+    transition: none;
+  }
+}

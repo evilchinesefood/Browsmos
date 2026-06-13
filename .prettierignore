@@ -1,0 +1,5 @@
+Source/Vendor/
+node_modules/
+*.ogg
+*.png
+*.svg

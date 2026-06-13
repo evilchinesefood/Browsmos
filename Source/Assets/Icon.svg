@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Browsmos">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="78%">
+      <stop offset="0%" stop-color="#2450e4" />
+      <stop offset="100%" stop-color="#0a1630" />
+    </radialGradient>
+    <radialGradient id="player" cx="38%" cy="34%" r="72%">
+      <stop offset="0%" stop-color="#eafcff" />
+      <stop offset="100%" stop-color="#73dbff" />
+    </radialGradient>
+    <radialGradient id="prey" cx="38%" cy="34%" r="72%">
+      <stop offset="0%" stop-color="#cdf0ff" />
+      <stop offset="100%" stop-color="#36b6ff" />
+    </radialGradient>
+    <radialGradient id="threat" cx="38%" cy="34%" r="72%">
+      <stop offset="0%" stop-color="#ffd2c6" />
+      <stop offset="100%" stop-color="#ff5a3c" />
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" />
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)" />
+  <circle cx="152" cy="364" r="34" fill="url(#prey)" />
+  <circle cx="384" cy="150" r="22" fill="url(#prey)" />
+  <circle cx="398" cy="372" r="30" fill="url(#threat)" />
+  <circle cx="256" cy="246" r="124" fill="#73dbff" opacity="0.35" filter="url(#glow)" />
+  <circle cx="256" cy="246" r="112" fill="url(#player)" />
+</svg>

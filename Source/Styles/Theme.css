@@ -1,0 +1,42 @@
+/* Game palette + Web Awesome token overrides so WA components sit on the
+   dark pond instead of fighting it. */
+:root {
+  --game-cyan: #73dbff;
+  --game-blue: #2450e4;
+  --game-surround: #1d40b5;
+  --game-ink: #eaf6ff;
+  --game-glass: rgba(8, 20, 46, 0.82);
+  --game-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  font-family: var(--game-font);
+  color: var(--game-ink);
+  background: #000;
+}
+
+/* Brand ramp leans toward the game's cyan/blue (drives the "Begin playing"
+   button and focus rings). */
+.wa-palette-default {
+  --wa-color-brand-fill-loud: var(--game-blue);
+  --wa-color-brand-fill-normal: #2f6bd6;
+  --wa-color-brand-border-loud: var(--game-cyan);
+  --wa-color-brand-on-loud: #ffffff;
+}
+
+/* The help dialog reads as a dark glass panel. Custom properties pierce the
+   shadow DOM, so the vendored component picks these up unmodified. */
+#help-dialog {
+  --wa-color-surface-default: var(--game-glass);
+  --wa-color-surface-raised: var(--game-glass);
+  --wa-color-text-normal: var(--game-ink);
+  --wa-color-text-quiet: #9fc4e8;
+  --wa-color-on-quiet: var(--game-ink);
+  color: var(--game-ink);
+}
+
+/* The dialog's built-in × is a nested plain wa-button; theme its base part so
+   it reads clearly on the dark glass instead of the light-palette gray. */
+#help-dialog::part(close-button__base) {
+  color: var(--game-ink);
+}

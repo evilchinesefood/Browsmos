@@ -1,0 +1,33 @@
+# Browsmos — static hosting config (Apache)
+
+# PascalCase entry file: Apache's default DirectoryIndex is lowercase-only,
+# so a bare /osmosis/ would 403 without this.
+<IfModule mod_dir.c>
+  DirectoryIndex Index.html index.html
+</IfModule>
+
+# Correct MIME types for native ES modules + PWA assets.
+<IfModule mod_mime.c>
+  AddType text/javascript .js
+  AddType text/javascript .mjs
+  AddType application/manifest+json .webmanifest
+  AddType image/svg+xml .svg
+  AddType font/woff2 .woff2
+  AddType audio/ogg .ogg
+</IfModule>
+
+# Always revalidate the service worker so updates ship promptly, plus baseline
+# security headers + a defense-in-depth CSP. No inline scripts exist, so
+# script-src stays 'self'; Web Awesome injects styles, so style needs inline.
+<IfModule mod_headers.c>
+  <FilesMatch "ServiceWorker\.js$">
+    Header set Cache-Control "no-cache, max-age=0"
+  </FilesMatch>
+  Header set X-Content-Type-Options nosniff
+  Header set Referrer-Policy no-referrer
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+</IfModule>
+
+# Deny direct access to dotfiles (.htaccess, .git, etc.) — but never
+# /.well-known/ (ACME renewals live there by web standard).
+RedirectMatch 404 "/\.(?!well-known/)"

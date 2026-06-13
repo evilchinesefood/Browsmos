@@ -1,39 +1,69 @@
 # Browsmos
 
-## Play
+An ambient cell-eating game for the browser, inspired by [Osmos](https://www.hemispheregames.com/osmos/). Absorb cells smaller than you to grow; avoid the bigger ones. Become the biggest cell in the pond and you win.
 
-http://stepheneisenhauer.com/demos/browsmos/
+**Play:** https://dev.jdayers.com/osmosis
 
-## About
+Originally written in 2014 by Stephen Eisenhauer; rebuilt in 2026 as a buildless ES-module PWA.
 
-Browsmos is a game the web browser, made entirely using HTML5, and inspired 
-heavily by the gameplay of Osmos.
+## Controls
 
-The rules are simple; click to propel yourself around, and try to absorb 
-smaller cells until you become the biggest. Watch out for larger cells, or 
-they will absorb you!
+- **Click / tap** any side of your cell to propel yourself the opposite way (you shed a little mass each push).
+- **Scroll / pinch** to zoom.
+- **R** new random level · **P** pause · **M** mute · **H** help.
 
-## Install
+## Tech
 
-Browsmos can also be installed as an app in Chromium or Google Chrome, 
-requiring no internet connectivity to play. It can be installed via the 
-Chrome Web Store here:
+Buildless — no bundler, no framework. Open `Index.html` on any static host.
 
-[![Available in the Chrome Web Store](https://developer.chrome.com/webstore/images/ChromeWebStore_Badge_v2_206x58.png)](https://chrome.google.com/webstore/detail/browsmos/kmijdbjgikpiadlbldnmldfgfepigkip)
+- **Vanilla JS ES modules** + HTML5 Canvas 2D for the game.
+- **[Web Awesome](https://webawesome.com) v3** (vendored) for the help dialog and control buttons.
+- **Font Awesome 7 Pro Duotone** (vendored) for the control icons.
+- **PWA** — installable and playable offline (`Manifest.webmanifest` + `ServiceWorker.js`).
 
-## Screenshots
+## Project structure
 
-![Screenshot 1](http://stepheneisenhauer.com/images/screenshots/browsmos.png)
+```
+Index.html              Entry point
+Manifest.webmanifest    PWA manifest
+ServiceWorker.js        Offline cache (network-first for code, cache-first for assets)
+.htaccess               Apache static-host config (MIME, CSP, SW no-cache)
+Source/
+  Main.js               Bootstrap: wiring, input, the rAF loop, SW registration
+  Game/                 Mover, Cell, Camera, World, MusicPlayer
+  UI/Chrome.js          Web Awesome controls, help dialog, message overlays
+  Styles/               Reset, Theme, Game
+  Assets/               Icons, logo, audio (Fx + Music)
+  Vendor/               Web Awesome + Font Awesome (vendored, do not edit)
+Tests/                  Structure, Sim (headless physics), Ui (DOM-stub wiring)
+```
 
-## Other Links
+## Develop
 
-* Homepage: http://stepheneisenhauer.com/browsmos/
+```bash
+npm test          # structure integrity + headless sim + UI wiring
+npm run format    # Prettier
+
+# serve locally (any static server), e.g.:
+npx serve .       # then open the printed URL
+```
+
+`Tests/Structure.mjs` enforces that every `Source/*.js` is listed in the service worker shell, so add new modules to both.
+
+## Deploy
+
+Static rsync to the `dev.jdayers.com/osmosis` web root. **Bump `CACHE` in `ServiceWorker.js`** whenever shipped code or vendored assets change, so returning users' caches refresh.
+
+```bash
+rsync -az --delete -e ssh ./ <user>@<host>:/home/<user>/dev.jdayers.com/osmosis/
+```
+
+## Credits
+
+- Game design and original code by [Stephen Eisenhauer](https://stepheneisenhauer.com).
+- Inspired by [Osmos](https://www.hemispheregames.com/osmos/) by Hemisphere Games — buy it, it's wonderful.
+- Music from the [ccMixter](https://ccmixter.org) community: "Black Rainbow" by Pitx and "Circles" by rewob.
 
 ## License
 
-Any JavaScript sources within Browsmos are hereby licensed under the 
-Simplified BSD License. You are free to modify and redistribute Browsmos, 
-but, if you do, please:
-
-* don't distribute modifications as though they are my own
-* consider including an attribution, preferably linking to this page
+JavaScript sources are licensed under the Simplified BSD License. You're free to modify and redistribute, but please don't pass off modifications as the original author's, and keep an attribution link back to the project.

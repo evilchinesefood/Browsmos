@@ -1,0 +1,11 @@
+{
+  "name": "browsmos",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "An ambient cell-eating game for the browser, inspired by Osmos.",
+  "scripts": {
+    "test": "node Tests/Structure.mjs && node Tests/Sim.mjs && node Tests/Ui.mjs",
+    "format": "prettier --write ."
+  }
+}
