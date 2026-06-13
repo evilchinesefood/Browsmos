@@ -21,7 +21,8 @@ Buildless — no bundler, no framework. Open `Index.html` on any static host.
 - **Font Awesome 7 Pro Duotone** (vendored) for the control icons.
 - **PWA** — installable and playable offline (`Manifest.webmanifest` + `ServiceWorker.js`).
 
-## Project structure
+<details>
+<summary><strong>Project structure</strong></summary>
 
 ```
 Index.html              Entry point
@@ -30,15 +31,18 @@ ServiceWorker.js        Offline cache (network-first for code, cache-first for a
 .htaccess               Apache static-host config (MIME, CSP, SW no-cache)
 Source/
   Main.js               Bootstrap: wiring, input, the rAF loop, SW registration
-  Game/                 Mover, Cell, Camera, World, MusicPlayer
-  UI/Chrome.js          Web Awesome controls, help dialog, message overlays
+  Game/                 Mover, Cell, Species, Camera, World, MusicPlayer
+  UI/Chrome.js          Control buttons, help overlay, message overlays
   Styles/               Reset, Theme, Game
-  Assets/               Icons, logo, audio (Fx + Music)
+  Assets/               Icons, logo, fonts, audio (Fx + Music)
   Vendor/               Web Awesome + Font Awesome (vendored, do not edit)
 Tests/                  Structure, Sim (headless physics), Ui (DOM-stub wiring)
 ```
 
-## Develop
+</details>
+
+<details>
+<summary><strong>Develop</strong></summary>
 
 ```bash
 npm test          # structure integrity + headless sim + UI wiring
@@ -49,6 +53,8 @@ npx serve .       # then open the printed URL
 ```
 
 `Tests/Structure.mjs` enforces that every `Source/*.js` is listed in the service worker shell, so add new modules to both.
+
+</details>
 
 ## Credits
 

@@ -62,23 +62,36 @@ export class Cell extends Mover {
   // Trace the (possibly elongated/spiky) wobbling membrane into the current
   // path, around the pre-translated local origin, oriented along `heading`.
   _trace(ctx, ox, oy, r, time, shape, heading) {
-    const N = shape === "spiky" ? 22 : 18;
     const ch = Math.cos(heading),
       sh = Math.sin(heading);
     ctx.beginPath();
+
+    if (shape === "spiky") {
+      // A star: spike tips and valleys alternate, with the valleys sitting on a
+      // round-ish inner body so every spike is attached to the cell.
+      const S = 10;
+      const N2 = S * 2;
+      const breathe = 1 + 0.04 * Math.sin(time * 1.4 + this.seed);
+      for (let i = 0; i <= N2; i++) {
+        const a = (i / N2) * TAU;
+        const w = (i % 2 === 0 ? 1.32 : 0.86) * breathe;
+        const rx = Math.cos(a) * r * w;
+        const ry = Math.sin(a) * r * w;
+        const x = ox + rx * ch - ry * sh;
+        const y = oy + rx * sh + ry * ch;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.closePath();
+      return;
+    }
+
+    const N = 18;
     for (let i = 0; i <= N; i++) {
       const a = (i / N) * TAU;
-      let w;
-      if (shape === "spiky")
-        w =
-          1 +
-          0.14 * Math.sin(a * 7 + this.seed) +
-          0.04 * Math.sin(a * 3 + time * 1.4 + this.seed);
-      else
-        w =
-          1 +
-          0.05 * Math.sin(a * 3 + this.seed + time * 1.6) +
-          0.03 * Math.sin(a * 5 - this.seed * 1.7 + time * 1.1);
+      const w =
+        1 +
+        0.05 * Math.sin(a * 3 + this.seed + time * 1.6) +
+        0.03 * Math.sin(a * 5 - this.seed * 1.7 + time * 1.1);
       let rx = Math.cos(a) * r * w;
       let ry = Math.sin(a) * r * w;
       if (shape === "rod") {
@@ -182,6 +195,22 @@ export class Cell extends Mover {
       ctx.fill();
     }
 
+    // An item-bearing cell glows with the item's color.
+    if (sp && sp.item && r >= 5) {
+      const ic = parse(ITEM_INFO[sp.item].color);
+      const gr = r * 1.9;
+      const halo = ctx.createRadialGradient(0, 0, r * 0.65, 0, 0, gr);
+      halo.addColorStop(
+        0,
+        rgba(ic, 0.4 + 0.12 * Math.sin(time * 3 + this.seed)),
+      );
+      halo.addColorStop(1, rgba(ic, 0));
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(0, 0, gr, 0, TAU);
+      ctx.fill();
+    }
+
     // Body path — reused for fill and membrane stroke.
     this._trace(ctx, 0, 0, r, time, shape, heading);
 
@@ -204,17 +233,6 @@ export class Cell extends Mover {
     ctx.strokeStyle = rgba(MEMBRANE[color], isPlayer ? 0.8 : 0.55);
     ctx.stroke();
 
-    // Aura ring telegraphing an item-bearing cell (so players seek them out).
-    if (sp && sp.item && r >= 5) {
-      ctx.strokeStyle = ITEM_INFO[sp.item].color;
-      ctx.globalAlpha = 0.35 + 0.2 * Math.sin(time * 3 + this.seed);
-      ctx.lineWidth = Math.max(1, r * 0.06);
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 1.2, 0, TAU);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-
     // Cilia hairs around the rim.
     if (sp && sp.cilia && r >= 4) {
       ctx.strokeStyle = rgba(MEMBRANE[color], 0.45);
@@ -232,7 +250,31 @@ export class Cell extends Mover {
     }
 
     if (r >= 5) {
-      if (shape === "segmented") {
+      if (sp && sp.item && r >= 7) {
+        // Opaque item inclusion — a solid colored organelle sitting inside the
+        // translucent cytoplasm, with a dark glyph for contrast.
+        const info = ITEM_INFO[sp.item];
+        const ic = parse(info.color);
+        const ir = r * 0.5;
+        const incl = ctx.createRadialGradient(
+          -ir * 0.3,
+          -ir * 0.3,
+          ir * 0.1,
+          0,
+          0,
+          ir,
+        );
+        incl.addColorStop(0, rgba(toward(ic, 0.35), 0.97));
+        incl.addColorStop(1, rgba(ic, 0.8));
+        ctx.fillStyle = incl;
+        ctx.beginPath();
+        ctx.arc(0, 0, ir, 0, TAU);
+        ctx.fill();
+        ctx.strokeStyle = rgba(toward(ic, 0.5), 0.9);
+        ctx.lineWidth = Math.max(0.6, ir * 0.08);
+        ctx.stroke();
+        drawGlyph(ctx, info.glyph, ir * 0.62, "rgba(6,16,28,0.92)");
+      } else if (shape === "segmented") {
         const ch = Math.cos(heading),
           sh = Math.sin(heading);
         for (let k = 0; k < 3; k++) {
@@ -251,20 +293,11 @@ export class Cell extends Mover {
         );
       }
 
-      if (r > 16 && shape !== "segmented") {
+      if (r > 16 && shape !== "segmented" && !(sp && sp.item)) {
         ctx.fillStyle = rgba(CORE[color], 0.5);
         ctx.beginPath();
         ctx.arc(r * 0.32, -r * 0.28, r * 0.12, 0, TAU);
         ctx.fill();
-      }
-
-      // Contained "spell" item, glowing inside the cell.
-      if (sp && sp.item && r >= 7) {
-        const info = ITEM_INFO[sp.item];
-        ctx.save();
-        ctx.globalAlpha = 0.75 + 0.25 * Math.sin(time * 4 + this.seed);
-        drawGlyph(ctx, info.glyph, r * 0.42, info.color);
-        ctx.restore();
       }
     }
 

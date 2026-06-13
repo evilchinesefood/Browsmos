@@ -5,6 +5,8 @@ const FPS = 30;
 const MSPF = 1000 / FPS;
 const MAX_DELTA = 4; // cap a stall (tab refocus, GC) so physics can't explode
 const TAU = Math.PI * 2;
+const NPC_VELOC_MAX = 2.2; // NPC cells always drift slowly, never zip around
+const NPC_MAX_RADIUS = 80; // keep AI cells catchable so the level stays winnable
 
 // Angle of the vector (x, y), normalized to [0, 2π). Used for wall bounces.
 function angleForVector(x, y) {
@@ -89,6 +91,8 @@ export class World {
   _growBy(cell, morselR, mult) {
     const add = Math.PI * morselR * morselR * 2 * mult;
     cell.radius = Math.sqrt((cell.area() + add) / Math.PI);
+    if (cell !== this.cells[0] && cell.radius > NPC_MAX_RADIUS)
+      cell.radius = NPC_MAX_RADIUS;
   }
 
   _initParticles() {
@@ -317,6 +321,7 @@ export class World {
       const y = (30 + rad + r) * Math.cos(ang);
       const cell = new Cell(x, y, rad);
       cell.species = makeSpecies();
+      cell.veloc_max = NPC_VELOC_MAX; // NPCs stay slow
       cell.x_veloc = (Math.random() - 0.5) * 0.35;
       cell.y_veloc = (Math.random() - 0.5) * 0.35;
       this.cells.push(cell);
@@ -421,6 +426,8 @@ export class World {
 
     smaller.radius -= exchange / (2 * Math.PI * smaller.radius);
     bigger.radius += exchange / (2 * Math.PI * bigger.radius);
+    if (bigger !== player && bigger.radius > NPC_MAX_RADIUS)
+      bigger.radius = NPC_MAX_RADIUS;
 
     if (bigger === player && !this.user_did_zoom) this.zoom_to_player();
 
@@ -523,7 +530,7 @@ export class World {
       }
       for (const h of hunters) {
         if (Math.hypot(h.x_pos - mo.x, h.y_pos - mo.y) < h.radius + mo.r) {
-          this._growBy(h, mo.r, 1);
+          this._growBy(h, mo.r, 0.15); // hunters barely grow — keeps you ahead
           this._respawnMorsel(mo);
           break;
         }
