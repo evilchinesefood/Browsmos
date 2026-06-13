@@ -1,4 +1,5 @@
 import { Mover } from "./Mover.js";
+import { drawGlyph, ITEM_INFO } from "./Species.js";
 
 const TAU = Math.PI * 2;
 
@@ -45,8 +46,9 @@ export class Cell extends Mover {
     if (y !== undefined) this.y_pos = y;
     if (radius !== undefined) this.radius = radius;
     this.dead = false;
-    // Per-cell phase so each membrane wobbles independently.
-    this.seed = Math.random() * TAU;
+    this.seed = Math.random() * TAU; // per-cell wobble phase
+    this.heading = Math.random() * TAU; // for rods / flagella, follows velocity
+    this.species = null; // set for NPC cells by World; player stays plain
   }
 
   area() {
@@ -57,23 +59,54 @@ export class Cell extends Mover {
     if (!this.dead) super.update(frame_delta);
   }
 
-  // Trace the organic (wobbling) membrane into the current path, around a local
-  // origin (the context is pre-translated to the cell center).
-  _trace(ctx, ox, oy, r, time) {
-    const N = 18;
+  // Trace the (possibly elongated/spiky) wobbling membrane into the current
+  // path, around the pre-translated local origin, oriented along `heading`.
+  _trace(ctx, ox, oy, r, time, shape, heading) {
+    const N = shape === "spiky" ? 22 : 18;
+    const ch = Math.cos(heading),
+      sh = Math.sin(heading);
     ctx.beginPath();
     for (let i = 0; i <= N; i++) {
       const a = (i / N) * TAU;
-      const w =
-        1 +
-        0.05 * Math.sin(a * 3 + this.seed + time * 1.6) +
-        0.03 * Math.sin(a * 5 - this.seed * 1.7 + time * 1.1);
-      const rr = r * w;
-      const x = ox + Math.cos(a) * rr;
-      const y = oy + Math.sin(a) * rr;
+      let w;
+      if (shape === "spiky")
+        w =
+          1 +
+          0.14 * Math.sin(a * 7 + this.seed) +
+          0.04 * Math.sin(a * 3 + time * 1.4 + this.seed);
+      else
+        w =
+          1 +
+          0.05 * Math.sin(a * 3 + this.seed + time * 1.6) +
+          0.03 * Math.sin(a * 5 - this.seed * 1.7 + time * 1.1);
+      let rx = Math.cos(a) * r * w;
+      let ry = Math.sin(a) * r * w;
+      if (shape === "rod") {
+        rx *= 1.55;
+        ry *= 0.62;
+      }
+      const x = ox + rx * ch - ry * sh;
+      const y = oy + rx * sh + ry * ch;
       i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
     }
     ctx.closePath();
+  }
+
+  _nucleus(ctx, x, y, nr, color) {
+    const g = ctx.createRadialGradient(
+      x - nr * 0.3,
+      y - nr * 0.3,
+      nr * 0.1,
+      x,
+      y,
+      nr,
+    );
+    g.addColorStop(0, rgba(RGB[color], 0.5));
+    g.addColorStop(1, rgba(NUCLEUS[color], 0.55));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, nr, 0, TAU);
+    ctx.fill();
   }
 
   // player_radius is omitted for the player itself, so it keeps its own color.
@@ -85,8 +118,7 @@ export class Cell extends Mover {
     const r = this.radius * cam.scale;
     if (r <= 0.5) return;
 
-    // Viewport culling — skip anything fully off-screen.
-    const m = r + 30;
+    const m = r * 2 + 30;
     if (vx < -m || vx > cam.viewW + m || vy < -m || vy > cam.viewH + m) return;
 
     const isPlayer = player_radius === undefined;
@@ -97,35 +129,70 @@ export class Cell extends Mover {
       else color = EDIBLE;
     }
 
+    const sp = this.species;
+    const shape = sp ? sp.shape : "blob";
+    if (this.x_veloc * this.x_veloc + this.y_veloc * this.y_veloc > 0.0025)
+      this.heading = Math.atan2(this.y_veloc, this.x_veloc);
+    const heading = this.heading;
+
     ctx.save();
     ctx.translate(vx, vy);
 
-    // Soft cast shadow (its own offset path).
+    // Flagellum tail (behind the body).
+    if (sp && sp.flagellum && r >= 4) {
+      const baseA = heading + Math.PI;
+      const ca = Math.cos(baseA),
+        sa = Math.sin(baseA);
+      const pa = baseA + Math.PI / 2;
+      const cpa = Math.cos(pa),
+        spa = Math.sin(pa);
+      const len = r * 2.4;
+      ctx.strokeStyle = rgba(MEMBRANE[color], 0.5);
+      ctx.lineWidth = Math.max(1, r * 0.12);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      for (let s = 0; s <= 10; s++) {
+        const t = s / 10;
+        const along = len * t;
+        const wob = Math.sin(t * 6 - time * 8 + sp.phase) * r * 0.45 * t;
+        const x = ca * along + cpa * wob;
+        const y = sa * along + spa * wob;
+        s ? ctx.lineTo(x, y) : ctx.moveTo(ca * r * 0.7, sa * r * 0.7);
+      }
+      ctx.stroke();
+    }
+
+    // Soft cast shadow.
     if (shadow) {
-      this._trace(ctx, 1.5, 3, r, time);
+      this._trace(ctx, 1.5, 3, r, time, shape, heading);
       ctx.fillStyle = "rgba(0,18,38,0.22)";
       ctx.fill();
     }
 
-    // Body path — reused for the glow, the fill, and the membrane stroke.
-    this._trace(ctx, 0, 0, r, time);
-
+    // Player glow halo — a radial gradient behind the body (much cheaper than a
+    // per-frame shadowBlur pass).
     if (isPlayer) {
-      ctx.save();
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 22;
-      ctx.fillStyle = rgba(RGB[color], 0.9);
+      const gr = r * 2.4;
+      const halo = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, gr);
+      halo.addColorStop(0, rgba(RGB[color], 0.5));
+      halo.addColorStop(1, rgba(RGB[color], 0));
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(0, 0, gr, 0, TAU);
       ctx.fill();
-      ctx.restore();
     }
 
+    // Body path — reused for fill and membrane stroke.
+    this._trace(ctx, 0, 0, r, time, shape, heading);
+
+    const ext = shape === "rod" ? 1.5 : 1;
     const body = ctx.createRadialGradient(
-      -r * 0.35,
+      -r * 0.35 * ext,
       -r * 0.35,
       r * 0.1,
       0,
       0,
-      r,
+      r * ext,
     );
     body.addColorStop(0, rgba(CORE[color], isPlayer ? 0.95 : 0.88));
     body.addColorStop(0.65, rgba(RGB[color], isPlayer ? 0.85 : 0.74));
@@ -137,34 +204,67 @@ export class Cell extends Mover {
     ctx.strokeStyle = rgba(MEMBRANE[color], isPlayer ? 0.8 : 0.55);
     ctx.stroke();
 
-    if (r >= 5) {
-      // Nucleus — a denser blob that drifts slowly inside the cell.
-      const na = this.seed + time * 0.4;
-      const noff = r * 0.16;
-      const ncx = Math.cos(na) * noff;
-      const ncy = Math.sin(na) * noff;
-      const nr = r * 0.34;
-      const nuc = ctx.createRadialGradient(
-        ncx - nr * 0.3,
-        ncy - nr * 0.3,
-        nr * 0.1,
-        ncx,
-        ncy,
-        nr,
-      );
-      nuc.addColorStop(0, rgba(RGB[color], 0.5));
-      nuc.addColorStop(1, rgba(NUCLEUS[color], 0.55));
-      ctx.fillStyle = nuc;
+    // Aura ring telegraphing an item-bearing cell (so players seek them out).
+    if (sp && sp.item && r >= 5) {
+      ctx.strokeStyle = ITEM_INFO[sp.item].color;
+      ctx.globalAlpha = 0.35 + 0.2 * Math.sin(time * 3 + this.seed);
+      ctx.lineWidth = Math.max(1, r * 0.06);
       ctx.beginPath();
-      ctx.arc(ncx, ncy, nr, 0, TAU);
-      ctx.fill();
+      ctx.arc(0, 0, r * 1.2, 0, TAU);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
 
-      // A vacuole highlight on larger cells.
-      if (r > 16) {
+    // Cilia hairs around the rim.
+    if (sp && sp.cilia && r >= 4) {
+      ctx.strokeStyle = rgba(MEMBRANE[color], 0.45);
+      ctx.lineWidth = Math.max(0.6, r * 0.045);
+      const H = 18;
+      for (let i = 0; i < H; i++) {
+        const a = (i / H) * TAU;
+        const wob = Math.sin(a * 3 + time * 4 + this.seed) * 0.3;
+        const oa = a + wob;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * r * 0.96, Math.sin(a) * r * 0.96);
+        ctx.lineTo(Math.cos(oa) * r * 1.33, Math.sin(oa) * r * 1.33);
+        ctx.stroke();
+      }
+    }
+
+    if (r >= 5) {
+      if (shape === "segmented") {
+        const ch = Math.cos(heading),
+          sh = Math.sin(heading);
+        for (let k = 0; k < 3; k++) {
+          const off = (k - 1) * r * 0.44;
+          this._nucleus(ctx, ch * off, sh * off, r * 0.24, color);
+        }
+      } else {
+        const na = this.seed + time * 0.4;
+        const noff = r * 0.16;
+        this._nucleus(
+          ctx,
+          Math.cos(na) * noff,
+          Math.sin(na) * noff,
+          r * 0.34,
+          color,
+        );
+      }
+
+      if (r > 16 && shape !== "segmented") {
         ctx.fillStyle = rgba(CORE[color], 0.5);
         ctx.beginPath();
         ctx.arc(r * 0.32, -r * 0.28, r * 0.12, 0, TAU);
         ctx.fill();
+      }
+
+      // Contained "spell" item, glowing inside the cell.
+      if (sp && sp.item && r >= 7) {
+        const info = ITEM_INFO[sp.item];
+        ctx.save();
+        ctx.globalAlpha = 0.75 + 0.25 * Math.sin(time * 4 + this.seed);
+        drawGlyph(ctx, info.glyph, r * 0.42, info.color);
+        ctx.restore();
       }
     }
 
