@@ -3,6 +3,7 @@ import { Cell } from "./Cell.js";
 const FPS = 30;
 const MSPF = 1000 / FPS;
 const MAX_DELTA = 4; // cap a stall (tab refocus, GC) so physics can't explode
+const TAU = Math.PI * 2;
 
 // Angle of the vector (x, y), normalized to [0, 2π). Used for wall bounces.
 function angleForVector(x, y) {
@@ -21,8 +22,6 @@ export class World {
     this.ui = ui;
 
     this.cells = [];
-    this.surr_color = "#1D40B5"; // outside the pond
-    this.bg_color = "#2450E4"; // inside the pond
     this.level_radius = 500;
     this.level_total_mass = 0;
 
@@ -35,6 +34,27 @@ export class World {
 
     this._lastTick = 0;
     this.frame_delta = 1;
+
+    // Suspended particulate matter drifting in the water (persists across levels).
+    this.motes = this._initMotes();
+  }
+
+  _initMotes() {
+    const m = [];
+    const R = this.level_radius;
+    for (let i = 0; i < 64; i++) {
+      const ang = Math.random() * TAU;
+      const rad = Math.sqrt(Math.random()) * R * 0.95;
+      m.push({
+        x: Math.cos(ang) * rad,
+        y: Math.sin(ang) * rad,
+        vx: (Math.random() - 0.5) * 0.08,
+        vy: (Math.random() - 0.5) * 0.08,
+        r: 0.6 + Math.random() * 1.8,
+        a: 0.05 + Math.random() * 0.18,
+      });
+    }
+    return m;
   }
 
   // First dismissal of the help screen. The board is already live (load_level
@@ -226,11 +246,119 @@ export class World {
     return true;
   }
 
+  // Render the microscope field: dark eyepiece surround, illuminated pond with
+  // a bloom, drifting light caustics, and suspended motes.
+  _drawWater(ctx, cam, cssW, cssH, time) {
+    const sx = cssW / 2,
+      sy = cssH / 2;
+    const surround = ctx.createRadialGradient(
+      sx,
+      sy,
+      0,
+      sx,
+      sy,
+      Math.hypot(cssW, cssH) / 2,
+    );
+    surround.addColorStop(0, "#0a1a2e");
+    surround.addColorStop(1, "#02060c");
+    ctx.fillStyle = surround;
+    ctx.fillRect(0, 0, cssW, cssH);
+
+    const px = cam.world_to_viewport_x(0);
+    const py = cam.world_to_viewport_y(0);
+    const pr = Math.abs(this.level_radius * cam.scale);
+    if (pr <= 0) return { px, py, pr };
+
+    // Outer bloom around the lit specimen.
+    const bloom = ctx.createRadialGradient(px, py, pr * 0.9, px, py, pr * 1.2);
+    bloom.addColorStop(0, "rgba(90,160,255,0.32)");
+    bloom.addColorStop(1, "rgba(90,160,255,0)");
+    ctx.fillStyle = bloom;
+    ctx.beginPath();
+    ctx.arc(px, py, pr * 1.2, 0, TAU);
+    ctx.fill();
+
+    // Illuminated water disc.
+    const pond = ctx.createRadialGradient(
+      px - pr * 0.2,
+      py - pr * 0.25,
+      pr * 0.1,
+      px,
+      py,
+      pr,
+    );
+    pond.addColorStop(0, "#3a6cf0");
+    pond.addColorStop(0.6, "#1f49c8");
+    pond.addColorStop(1, "#143a8f");
+    ctx.fillStyle = pond;
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, TAU);
+    ctx.fill();
+
+    // Light caustics + motes, clipped to the water.
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, TAU);
+    ctx.clip();
+
+    ctx.globalCompositeOperation = "screen";
+    for (let i = 0; i < 4; i++) {
+      const ax = px + Math.cos(time * 0.25 + i * 2.1) * pr * 0.5;
+      const ay = py + Math.sin(time * 0.21 + i * 1.3) * pr * 0.5;
+      const ar = pr * (0.5 + 0.15 * Math.sin(time * 0.5 + i));
+      const cg = ctx.createRadialGradient(ax, ay, 0, ax, ay, ar);
+      cg.addColorStop(0, "rgba(150,205,255,0.10)");
+      cg.addColorStop(1, "rgba(150,205,255,0)");
+      ctx.fillStyle = cg;
+      ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+    }
+    ctx.globalCompositeOperation = "source-over";
+
+    for (const m of this.motes) {
+      if (!this.paused) {
+        m.x += m.vx * this.frame_delta;
+        m.y += m.vy * this.frame_delta;
+        if (Math.hypot(m.x, m.y) > this.level_radius * 0.96) {
+          m.vx = -m.vx;
+          m.vy = -m.vy;
+          m.x *= 0.95;
+          m.y *= 0.95;
+        }
+      }
+      const mx = cam.world_to_viewport_x(m.x);
+      const my = cam.world_to_viewport_y(m.y);
+      ctx.fillStyle = `rgba(205,228,255,${m.a})`;
+      ctx.beginPath();
+      ctx.arc(mx, my, Math.max(0.5, m.r * cam.scale), 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Inner edge shadow (water meniscus).
+    const inner = ctx.createRadialGradient(px, py, pr * 0.82, px, py, pr);
+    inner.addColorStop(0, "rgba(0,10,30,0)");
+    inner.addColorStop(1, "rgba(0,8,26,0.4)");
+    ctx.fillStyle = inner;
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, TAU);
+    ctx.fill();
+
+    // Field-of-view rim.
+    ctx.strokeStyle = "rgba(212,236,255,0.85)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, TAU);
+    ctx.stroke();
+
+    return { px, py, pr };
+  }
+
   // One frame: integrate physics, resolve collisions, render, track the camera.
   update(now) {
     if (this._lastTick === 0) this._lastTick = now;
     this.frame_delta = Math.min((now - this._lastTick) / MSPF, MAX_DELTA);
     this._lastTick = now;
+    const time = now / 1000;
 
     const ctx = this.ctx,
       cam = this.cam;
@@ -246,30 +374,8 @@ export class World {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     cam.set_viewport(cssW, cssH);
 
-    // Surrounding fill, then the pond disc (with a soft drop shadow).
     ctx.clearRect(0, 0, cssW, cssH);
-    ctx.fillStyle = this.surr_color;
-    ctx.fillRect(0, 0, cssW, cssH);
-
-    const px = cam.world_to_viewport_x(0);
-    const py = cam.world_to_viewport_y(0);
-    const pr = Math.abs(this.level_radius * cam.scale);
-    ctx.fillStyle = this.bg_color;
-    ctx.beginPath();
-    ctx.arc(px, py, pr, 0, Math.PI * 2);
-    ctx.fill();
-    if (this.shadows) {
-      ctx.strokeStyle = "rgba(0,0,0,0.3)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(px + 2, py + 4, pr, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(px, py, pr, 0, Math.PI * 2);
-    ctx.stroke();
+    this._drawWater(ctx, cam, cssW, cssH, time);
 
     const player = this.get_player();
     let smallest_big_mass = Infinity;
@@ -299,7 +405,7 @@ export class World {
           this.music.play_sound("bounce");
       }
 
-      if (i !== 0) cell.draw(ctx, cam, this.shadows, player.radius);
+      if (i !== 0) cell.draw(ctx, cam, this.shadows, player.radius, time);
     }
 
     if (!player.dead && !this.paused && !this.won) {
@@ -308,8 +414,25 @@ export class World {
         this.ui.showMessage("warning");
     }
 
-    player.draw(ctx, cam, this.shadows);
+    player.draw(ctx, cam, this.shadows, undefined, time);
     cam.update(player.x_pos, player.y_pos, this.frame_delta);
+
+    // Eyepiece vignette over everything.
+    const sx = cssW / 2,
+      sy = cssH / 2;
+    const vig = ctx.createRadialGradient(
+      sx,
+      sy,
+      Math.min(cssW, cssH) * 0.36,
+      sx,
+      sy,
+      Math.max(cssW, cssH) * 0.72,
+    );
+    vig.addColorStop(0, "rgba(0,0,0,0)");
+    vig.addColorStop(1, "rgba(0,0,0,0.45)");
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, cssW, cssH);
+
     this.music.update(this.frame_delta);
   }
 }

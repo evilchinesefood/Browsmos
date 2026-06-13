@@ -5,21 +5,9 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  background: #000;
+  background: #02060c;
   cursor: crosshair;
   touch-action: none;
-}
-
-#logo {
-  position: fixed;
-  top: max(8px, env(safe-area-inset-top));
-  left: max(8px, env(safe-area-inset-left));
-  z-index: 2;
-  opacity: 0.4;
-  transition: opacity 0.15s linear;
-}
-#logo:hover {
-  opacity: 0.7;
 }
 
 /* Control buttons (top-right). Plain WA buttons tinted to the game ink and
@@ -123,40 +111,104 @@ footer a:hover {
   opacity: 0.7;
 }
 
-/* Help dialog body */
+/* Intro / help overlay — a dim field with a centered "lab slide" panel. */
+#help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: radial-gradient(
+    circle at 50% 44%,
+    rgba(8, 24, 48, 0.55),
+    rgba(0, 0, 0, 0.86)
+  );
+  backdrop-filter: blur(3px);
+}
+#help-overlay.visible {
+  display: flex;
+}
+.help-panel {
+  width: min(440px, 92vw);
+  max-height: 88dvh;
+  overflow: auto;
+  padding: 1.6rem 1.8rem 1.4rem;
+  text-align: center;
+  background: linear-gradient(
+    180deg,
+    rgba(13, 32, 62, 0.94),
+    rgba(6, 16, 36, 0.95)
+  );
+  border: 1px solid rgba(120, 200, 255, 0.3);
+  border-radius: 16px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.help-title {
+  margin-bottom: 0.5rem;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #d6f6ff, #4ec2ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.play-btn {
+  margin-top: 1.3rem;
+  padding: 0.7rem 2rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #04121f;
+  background: linear-gradient(180deg, #8fe3ff, #38b6ff);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(56, 182, 255, 0.4);
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
+}
+.play-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 9px 26px rgba(56, 182, 255, 0.55);
+}
+.play-btn:active {
+  transform: translateY(1px);
+}
+
 .help-body h3 {
-  margin: 1.2em 0 0.3em;
-  font-size: 0.95rem;
+  margin: 1.1em 0 0.3em;
+  font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-  padding-bottom: 0.2em;
+  letter-spacing: 0.08em;
+  color: var(--game-cyan);
 }
 .help-body p {
   margin: 0.45em 0;
-  line-height: 1.5;
-}
-.help-body a {
-  color: var(--game-cyan);
+  line-height: 1.55;
 }
 .help-body .key {
   display: inline-block;
   min-width: 1.5em;
   text-align: center;
   padding: 1px 5px;
-  margin-right: 0.3em;
+  margin: 0 0.15em;
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 4px;
   font-weight: 700;
 }
 
-/* Honor reduced-motion: drop UI transitions. (Camera easing is intrinsic to
-   the ambient gameplay and left as-is.) */
+/* Honor reduced-motion: drop UI transitions. (Camera easing + cell wobble are
+   intrinsic to the ambient gameplay and left as-is.) */
 @media (prefers-reduced-motion: reduce) {
-  #logo,
   #controls wa-button,
   #song-info,
-  footer a {
+  footer a,
+  .play-btn {
     transition: none;
   }
 }

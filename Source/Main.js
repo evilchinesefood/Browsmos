@@ -51,8 +51,7 @@ const world = new World({ canvas, ctx, cam, music, ui: chromeUI });
 
 music.init();
 chromeUI.setMuted(music.muted); // make the icon authoritative, not assumed
-world.load_level(); // a live board animates behind the help dialog
-chromeUI.openHelp();
+world.load_level(); // a live board animates behind the help overlay (shown via HTML)
 
 // --- Input ---------------------------------------------------------------
 let audioPrimed = false;
@@ -61,7 +60,7 @@ canvas.addEventListener(
   (e) => {
     e.preventDefault();
     // First in-game tap is a user gesture — ensure music is going even if the
-    // dialog was dismissed via Escape/× (which can't unlock audio on iOS).
+    // overlay was dismissed via Escape/backdrop (which can't unlock audio on iOS).
     if (!audioPrimed) {
       audioPrimed = true;
       music.play_song();
@@ -82,8 +81,12 @@ canvas.addEventListener(
 );
 
 window.addEventListener("keydown", (e) => {
-  if (chromeUI.dialog?.open) return; // let the dialog own keys while it's up
-  switch (e.key.toLowerCase()) {
+  const k = e.key.toLowerCase();
+  if (chromeUI.isHelpOpen) {
+    if (k === "escape" || k === "h") chromeUI.closeHelp();
+    return; // the overlay owns input while it's up
+  }
+  switch (k) {
     case "p":
       world.pause();
       break;

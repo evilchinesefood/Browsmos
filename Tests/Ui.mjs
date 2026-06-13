@@ -1,13 +1,12 @@
 // UI wiring test with a tiny DOM stub. Guards the iOS-audio regression: the
 // "Begin playing" button must invoke onPlay() SYNCHRONOUSLY inside the click
-// (so audio unlocks within the user gesture) — not via the async wa-after-hide.
+// (so audio unlocks within the user gesture), and the help overlay must close.
 import { Chrome } from "../Source/UI/Chrome.js";
 
 function makeEl() {
   const handlers = {};
   const set = new Set();
   const el = {
-    open: false,
     addEventListener(type, fn) {
       (handlers[type] ||= []).push(fn);
     },
@@ -41,26 +40,27 @@ const ok = (c, m) => {
 };
 
 let played = 0,
-  muted = 0,
-  closedSync = false;
+  closed = 0,
+  muted = 0;
 const chrome = new Chrome({
   onPlay: () => played++,
+  onHelpClosed: () => closed++,
   onMute: () => muted++,
 });
-const dialog = els["help-dialog"];
+const overlay = els["help-overlay"];
+overlay.classList.add("visible"); // intro is showing
 
-// Click "Begin playing" — onPlay must have fired synchronously by the time
-// dispatch returns, and the dialog must be commanded closed.
+// Click "Begin playing": onPlay must fire synchronously, the overlay must close,
+// and onHelpClosed must run — all within the click.
 els["play-btn"].dispatch("click");
-if (played === 1) closedSync = true;
-ok(closedSync, "play-btn calls onPlay synchronously within the click");
-ok(dialog.open === false, "play-btn closes the dialog");
+ok(played === 1, "play-btn calls onPlay synchronously within the click");
+ok(!overlay.classList.contains("visible"), "play-btn closes the help overlay");
+ok(closed === 1, "play-btn fires onHelpClosed");
 
-// Mute button forwards to onMute.
+// Mute button forwards to onMute and the icon swaps.
 els["mute-btn"].dispatch("click");
 ok(muted === 1, "mute-btn calls onMute");
 
-// setMuted swaps the icon classes.
 chrome.setMuted(true);
 ok(
   muteIcon.classList.contains("fa-volume-xmark") &&
@@ -78,4 +78,4 @@ if (fail.length) {
   console.error("UI check FAILED:\n  " + fail.join("\n  "));
   process.exit(1);
 }
-console.log("UI check passed (play-btn sync gesture + mute wiring).");
+console.log("UI check passed (play-btn sync gesture + overlay close + mute).");

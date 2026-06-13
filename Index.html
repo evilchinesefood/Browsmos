@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#1d40b5" />
+    <meta name="theme-color" content="#02060c" />
     <meta
       name="description"
       content="Browsmos — an ambient cell-eating game for the browser, inspired by Osmos."
@@ -17,8 +17,7 @@
     <link rel="apple-touch-icon" href="Source/Assets/Icon192.png" />
     <link rel="manifest" href="Manifest.webmanifest" />
 
-    <!-- Web Awesome v3 (vendored, buildless). Relative data-webawesome works at
-         the deploy subpath and at a local root alike (no client routes here). -->
+    <!-- Web Awesome v3 (vendored, buildless) — used for the control buttons. -->
     <link
       rel="stylesheet"
       href="Source/Vendor/WebAwesome/styles/webawesome.css"
@@ -42,8 +41,6 @@
   </head>
   <body>
     <canvas id="canvas">Sorry, your browser doesn't support canvas.</canvas>
-
-    <img id="logo" src="Source/Assets/Logo.png" alt="Browsmos" />
 
     <nav id="controls">
       <wa-button id="help-btn" appearance="plain" title="Help [H]">
@@ -86,57 +83,38 @@
       <p class="sub">Click here to start another random level.</p>
     </div>
 
-    <wa-dialog id="help-dialog" label="Browsmos">
-      <div class="help-body">
-        <p>
-          You are the
-          <strong style="color: #93fbff">bright blue</strong> cell in the center
-          of the screen.
-        </p>
-        <p>
-          Absorb <strong style="color: #73dbef">smaller</strong> cells while
-          avoiding the <strong style="color: #ff6a48">larger</strong> ones.
-          Become the biggest cell in the pond and you win!
-        </p>
-
-        <h3>Controls</h3>
-        <p>
-          Click or tap any side of your cell to propel yourself in the opposite
-          direction. Scroll or pinch to zoom.
-        </p>
-
-        <h3>Keyboard shortcuts</h3>
-        <p><span class="key">R</span> New random level</p>
-        <p><span class="key">P</span> Pause</p>
-        <p><span class="key">M</span> Mute sounds</p>
-        <p><span class="key">H</span> Show this help</p>
-
-        <h3>Credits</h3>
-        <p>
-          Browsmos was written by
-          <a href="https://stepheneisenhauer.com" target="_blank" rel="noopener"
-            >Stephen Eisenhauer</a
-          >, inspired by the award-winning
-          <a
-            href="https://www.hemispheregames.com/osmos/"
-            target="_blank"
-            rel="noopener"
-            >Osmos</a
-          >
-          by Hemisphere Games — a fantastic game well worth buying.
-        </p>
-        <p>
-          Music from the
-          <a href="https://ccmixter.org" target="_blank" rel="noopener"
-            >ccMixter</a
-          >
-          community: "Black Rainbow" by Pitx and "Circles" by rewob.
-        </p>
+    <!-- Intro / help. Plain overlay (no Web Awesome) so it always shows and
+         closes reliably regardless of component-upgrade timing. -->
+    <div id="help-overlay" class="visible">
+      <div class="help-panel">
+        <h1 class="help-title">Browsmos</h1>
+        <div class="help-body">
+          <p>
+            You are the <strong style="color: #93fbff">bright blue</strong> cell
+            in the center of the dish.
+          </p>
+          <p>
+            Absorb <strong style="color: #73dbef">smaller</strong> cells while
+            avoiding the <strong style="color: #ff7a66">larger</strong> ones.
+            Become the biggest cell in the pond and you win.
+          </p>
+          <h3>Controls</h3>
+          <p>
+            Click or tap any side of your cell to propel yourself the opposite
+            way. Scroll or pinch to zoom.
+          </p>
+          <h3>Keyboard</h3>
+          <p>
+            <span class="key">R</span> new level
+            <span class="key">P</span> pause <span class="key">M</span> mute
+            <span class="key">H</span> help
+          </p>
+        </div>
+        <button id="play-btn" class="play-btn" type="button">
+          Begin playing
+        </button>
       </div>
-      <wa-button id="play-btn" slot="footer" variant="brand">
-        Begin playing
-      </wa-button>
-    </wa-dialog>
+    </div>
 
     <footer>
       <a
