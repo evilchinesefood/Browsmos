@@ -2,3 +2,8 @@ node_modules/
 .DS_Store
 .omc/
 *.log
+
+# Commercial Fonticons assets (Font Awesome Pro / Web Awesome) — licensed, not
+# redistributable. Kept locally for rsync deploy; never commit to a public repo.
+Source/Vendor/FontAwesome/
+Source/Vendor/WebAwesome/
